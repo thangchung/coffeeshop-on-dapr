@@ -348,3 +348,10 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+out/
+**/.vagrant/
+.idea/
+local/data/
+.env
+portainer-data/

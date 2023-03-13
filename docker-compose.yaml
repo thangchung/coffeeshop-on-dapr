@@ -1,0 +1,187 @@
+version: "3.7"
+
+services:
+  postgresql:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=P@ssw0rd
+    ports:
+      - 5432:5432
+    networks:
+      - coffeeshop-network
+
+  rabbitmq:
+    image: masstransit/rabbitmq:latest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - coffeeshop-network
+
+  productservice:
+    image: ghcr.io/thangchung/coffeeshop-on-nomad/product-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./src/ProductService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "5001:5001"
+    restart: always
+    networks:
+      - coffeeshop-network
+
+  productservice-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "productservice",
+     "-app-port", "5001",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - productservice
+    network_mode: "service:productservice"
+  
+  counterservice:
+    image: ghcr.io/thangchung/coffeeshop-on-nomad/counter-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./src/CounterService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__counterdb=Server=postgresql;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd
+      - ProductApiUri=http://productservice:5001
+      - RabbitMqUrl=rabbitmq
+    ports:
+      - "5002:5002"
+    depends_on:
+      - postgresql
+      - rabbitmq
+      - productservice
+    restart: always
+    networks:
+      - coffeeshop-network
+
+  counterservice-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "counterservice",
+     "-app-port", "5002",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - counterservice
+    network_mode: "service:counterservice"
+
+  baristaservice:
+    image: ghcr.io/thangchung/coffeeshop-on-nomad/barista-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./src/BaristaService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__baristadb=Server=postgresql;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd
+      - RabbitMqUrl=rabbitmq
+      - Otlp__Endpoint=http://otel-collector:4317
+    ports:
+      - "5003:5003"
+    depends_on:
+      - postgresql
+      - rabbitmq
+    restart: always
+    networks:
+      - coffeeshop-network
+
+  baristaservice-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "baristaservice",
+     "-app-port", "5003",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - baristaservice
+    network_mode: "service:baristaservice"
+
+  kitchenservice:
+    image: ghcr.io/thangchung/coffeeshop-on-nomad/kitchen-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./src/KitchenService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__kitchendb=Server=postgresql;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd
+      - RabbitMqUrl=rabbitmq
+    ports:
+      - "5004:5004"
+    depends_on:
+      - postgresql
+      - rabbitmq
+    restart: always
+    networks:
+      - coffeeshop-network
+
+  kitchenservice-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "kitchenservice",
+     "-app-port", "5004",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - kitchenservice
+    network_mode: "service:kitchenservice"
+
+  reverseproxy:
+    image: ghcr.io/thangchung/coffeeshop-on-nomad/reverse-proxy:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./src/ReverseProxy/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ReverseProxy__Clusters__productApiCluster__Destinations__destination1__Address=http://productservice:5001
+      - ReverseProxy__Clusters__counterApiCluster__Destinations__destination1__Address=http://counterservice:5002
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgresql
+      - counterservice
+      - baristaservice
+      - kitchenservice
+    restart: always
+    networks:
+      - coffeeshop-network
+
+  reverseproxy-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "reverseproxy",
+     "-app-port", "8080",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - reverseproxy
+    network_mode: "service:reverseproxy"
+  
+  placement:
+    image: "daprio/dapr"
+    command: ["./placement", "-port", "50006"]
+    ports:
+      - "50006:50006"
+    networks:
+      - coffeeshop-network
+
+networks:
+  coffeeshop-network:
