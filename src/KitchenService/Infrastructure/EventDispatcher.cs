@@ -1,33 +1,33 @@
-﻿using CoffeeShop.Contracts;
+﻿using Dapr.Client;
 using KitchenService.Domain.DomainEvents;
-using MassTransit;
 using MediatR;
 using N8T.Core.Domain;
+using Newtonsoft.Json;
 
 namespace KitchenService.Infrastructure;
 
 internal class EventDispatcher : INotificationHandler<EventWrapper>
 {
-    private readonly IPublishEndpoint _publisher;
+    private readonly DaprClient _daprClient;
+    private readonly ILogger<EventDispatcher> _logger;
 
-    public EventDispatcher(IPublishEndpoint publisher)
+    public EventDispatcher(DaprClient daprClient, ILogger<EventDispatcher> logger)
     {
-        _publisher = publisher;
+        _daprClient = daprClient;
+        _logger = logger;
     }
 
     public virtual async Task Handle(EventWrapper @eventWrapper, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("[KitchenService] Event Dispatcher: {EventInfo}", JsonConvert.SerializeObject(@eventWrapper.Event));
+        
         if (@eventWrapper.Event is KitchenOrderUp kitchenOrderUpEvent)
         {
-            await _publisher.Publish<KitchenOrderUpdated>(new
-            {
-                kitchenOrderUpEvent.OrderId,
-                kitchenOrderUpEvent.ItemLineId,
-                kitchenOrderUpEvent.Name,
-                kitchenOrderUpEvent.ItemType,
-                kitchenOrderUpEvent.MadeBy,
-                kitchenOrderUpEvent.TimeUp
-            }, cancellationToken);
+            await _daprClient.PublishEventAsync(
+                "orderup_pubsub",
+                "orderup",
+                kitchenOrderUpEvent,
+                cancellationToken);
         }
     }
 }

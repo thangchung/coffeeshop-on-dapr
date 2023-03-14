@@ -1,39 +1,42 @@
 ﻿using CoffeeShop.Contracts;
 using CounterService.Domain.DomainEvents;
-using MassTransit;
+using Dapr.Client;
 using MediatR;
 using N8T.Core.Domain;
+using Newtonsoft.Json;
 
 namespace CounterService.Infrastructure;
 
 public class EventDispatcher : INotificationHandler<EventWrapper>
 {
-    private readonly IPublishEndpoint _publisher;
+    private readonly DaprClient _daprClient;
+    private readonly ILogger<EventDispatcher> _logger;
 
-    public EventDispatcher(IPublishEndpoint publisher)
+    public EventDispatcher(DaprClient daprClient, ILogger<EventDispatcher> logger)
     {
-        _publisher = publisher;
+        _daprClient = daprClient;
+        _logger = logger;
     }
 
     public virtual async Task Handle(EventWrapper @eventWrapper, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("[CounterService] Event Dispatcher: {EventInfo}", JsonConvert.SerializeObject(@eventWrapper.Event));
+        
         switch (@eventWrapper.Event)
         {
             case BaristaOrderIn baristaOrderInEvent:
-                await _publisher.Publish<BaristaOrdered>(new
-                {
-                    baristaOrderInEvent.OrderId,
-                    baristaOrderInEvent.ItemLineId,
-                    baristaOrderInEvent.ItemType
-                }, cancellationToken);
+                await _daprClient.PublishEventAsync(
+                    "barista_pubsub",
+                    nameof(BaristaOrdered).ToLowerInvariant(),
+                    baristaOrderInEvent,
+                    cancellationToken);
                 break;
             case KitchenOrderIn kitchenOrderInEvent:
-                await _publisher.Publish<KitchenOrdered>(new
-                {
-                    kitchenOrderInEvent.OrderId,
-                    kitchenOrderInEvent.ItemLineId,
-                    kitchenOrderInEvent.ItemType
-                }, cancellationToken);
+                await _daprClient.PublishEventAsync(
+                    "kitchen_pubsub",
+                    nameof(KitchenOrdered).ToLowerInvariant(),
+                    kitchenOrderInEvent,
+                    cancellationToken);
                 break;
         }
     }

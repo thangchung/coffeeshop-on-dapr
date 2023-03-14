@@ -12,16 +12,8 @@ services:
     networks:
       - coffeeshop-network
 
-  rabbitmq:
-    image: masstransit/rabbitmq:latest
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - coffeeshop-network
-
   productservice:
-    image: ghcr.io/thangchung/coffeeshop-on-nomad/product-service:${IMAGE_TAG:-latest}
+    image: ghcr.io/thangchung/coffeeshop-on-dapr/product-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/ProductService/Dockerfile
@@ -39,15 +31,17 @@ services:
      "-app-id", "productservice",
      "-app-port", "5001",
      "-placement-host-address", "placement:50006",
+     "-config", "/components/config.yaml",
      "-components-path", "/components"]
     volumes:
       - "./components/:/components"
     depends_on:
       - productservice
+    restart: always
     network_mode: "service:productservice"
   
   counterservice:
-    image: ghcr.io/thangchung/coffeeshop-on-nomad/counter-service:${IMAGE_TAG:-latest}
+    image: ghcr.io/thangchung/coffeeshop-on-dapr/counter-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/CounterService/Dockerfile
@@ -60,7 +54,6 @@ services:
       - "5002:5002"
     depends_on:
       - postgresql
-      - rabbitmq
       - productservice
     restart: always
     networks:
@@ -72,28 +65,28 @@ services:
      "-app-id", "counterservice",
      "-app-port", "5002",
      "-placement-host-address", "placement:50006",
+     "-config", "/components/config.yaml",
      "-components-path", "/components"]
     volumes:
       - "./components/:/components"
     depends_on:
       - counterservice
+    restart: always
     network_mode: "service:counterservice"
 
   baristaservice:
-    image: ghcr.io/thangchung/coffeeshop-on-nomad/barista-service:${IMAGE_TAG:-latest}
+    image: ghcr.io/thangchung/coffeeshop-on-dapr/barista-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/BaristaService/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__baristadb=Server=postgresql;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd
-      - RabbitMqUrl=rabbitmq
       - Otlp__Endpoint=http://otel-collector:4317
     ports:
       - "5003:5003"
     depends_on:
       - postgresql
-      - rabbitmq
     restart: always
     networks:
       - coffeeshop-network
@@ -104,27 +97,27 @@ services:
      "-app-id", "baristaservice",
      "-app-port", "5003",
      "-placement-host-address", "placement:50006",
+     "-config", "/components/config.yaml",
      "-components-path", "/components"]
     volumes:
       - "./components/:/components"
     depends_on:
       - baristaservice
+    restart: always
     network_mode: "service:baristaservice"
 
   kitchenservice:
-    image: ghcr.io/thangchung/coffeeshop-on-nomad/kitchen-service:${IMAGE_TAG:-latest}
+    image: ghcr.io/thangchung/coffeeshop-on-dapr/kitchen-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/KitchenService/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__kitchendb=Server=postgresql;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd
-      - RabbitMqUrl=rabbitmq
     ports:
       - "5004:5004"
     depends_on:
       - postgresql
-      - rabbitmq
     restart: always
     networks:
       - coffeeshop-network
@@ -135,15 +128,17 @@ services:
      "-app-id", "kitchenservice",
      "-app-port", "5004",
      "-placement-host-address", "placement:50006",
+     "-config", "/components/config.yaml",
      "-components-path", "/components"]
     volumes:
       - "./components/:/components"
     depends_on:
       - kitchenservice
+    restart: always
     network_mode: "service:kitchenservice"
 
   reverseproxy:
-    image: ghcr.io/thangchung/coffeeshop-on-nomad/reverse-proxy:${IMAGE_TAG:-latest}
+    image: ghcr.io/thangchung/coffeeshop-on-dapr/reverse-proxy:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/ReverseProxy/Dockerfile
@@ -168,11 +163,13 @@ services:
      "-app-id", "reverseproxy",
      "-app-port", "8080",
      "-placement-host-address", "placement:50006",
+     "-config", "/components/config.yaml",
      "-components-path", "/components"]
     volumes:
       - "./components/:/components"
     depends_on:
       - reverseproxy
+    restart: always
     network_mode: "service:reverseproxy"
   
   placement:
@@ -182,6 +179,38 @@ services:
       - "50006:50006"
     networks:
       - coffeeshop-network
+
+  ############################
+  # Redis state store
+  ############################
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+    networks:
+      - coffeeshop-network
+
+  ############################
+  # Zipkin component
+  ############################
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - coffeeshop-network
+  
+  # jaegertracing:
+  #   image: jaegertracing/all-in-one:1.22
+  #   container_name: jaegertracing
+  #   environment:
+  #     - COLLECTOR_ZIPKIN_HOST_PORT=:9412
+  #   ports:
+  #     - "9412:9412"
+  #     - "16686:16686"
+  #   networks:
+  #     - coffeeshop-network
 
 networks:
   coffeeshop-network:

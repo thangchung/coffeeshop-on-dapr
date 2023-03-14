@@ -1,12 +1,12 @@
 ﻿namespace CoffeeShop.Contracts;
 
-public interface KitchenOrderUpdated
+public record KitchenOrderUpdated
 {
-    public Guid OrderId { get; }
-    public Guid ItemLineId { get; }
-    public string Name { get; }
-    public ItemType ItemType { get; }
-    public DateTime TimeIn { get; }
-    public string MadeBy { get; }
-    public DateTime TimeUp { get; }
+    public Guid OrderId { get; set; }
+    public Guid ItemLineId { get; set; }
+    public string Name { get; set; }
+    public ItemType ItemType { get; set; }
+    public DateTime TimeIn { get; set; }
+    public string MadeBy { get; set; }
+    public DateTime TimeUp { get; set; }
 }

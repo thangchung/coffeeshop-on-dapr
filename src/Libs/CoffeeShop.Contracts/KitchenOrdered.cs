@@ -1,8 +1,8 @@
 ﻿namespace CoffeeShop.Contracts;
 
-public interface KitchenOrdered
+public record KitchenOrdered
 {
-    public Guid OrderId { get; }
-    public Guid ItemLineId { get; }
-    public ItemType ItemType { get; }
+    public Guid OrderId { get; set; }
+    public Guid ItemLineId { get; set; }
+    public ItemType ItemType { get; set; }
 }

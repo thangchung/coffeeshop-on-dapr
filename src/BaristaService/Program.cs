@@ -1,15 +1,18 @@
 // dotnet ef migrations add InitBaristaDb -c MainDbContext -o Infrastructure/Data/Migrations
 
-using BaristaService.Consumers;
 using BaristaService.Domain;
-using MassTransit;
 using N8T.Infrastructure;
 using N8T.Infrastructure.Controller;
 using N8T.Infrastructure.EfCore;
 using N8T.Infrastructure.OTel;
 using Spectre.Console;
 using System.Net;
+using System.Text.Json;
 using BaristaService.Infrastructure.Data;
+using BaristaService.UseCases;
+using CoffeeShop.Contracts;
+using Dapr;
+using MediatR;
 
 AnsiConsole.Write(new FigletText("Barista APIs").Color(Color.MediumPurple));
 
@@ -37,17 +40,11 @@ builder.Services
     .AddOTelTracing(builder.Configuration)
     .AddOTelMetrics(builder.Configuration);
 
-builder.Services.AddMassTransit(x =>
+builder.Services.AddDaprClient();
+builder.Services.AddSingleton(new JsonSerializerOptions()
 {
-    x.AddConsumer<BaristaOrderedConsumer>(typeof(BaristaOrderedConsumerDefinition));
-
-    x.SetKebabCaseEndpointNameFormatter();
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(builder.Configuration.GetValue<string>("RabbitMqUrl")!);
-        cfg.ConfigureEndpoints(context);
-    });
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true,
 });
 
 var app = builder.Build();
@@ -64,8 +61,28 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseRouting();
 
+app.UseCloudEvents();
+
 //app.UseAuthorization();
 
 await app.DoDbMigrationAsync(app.Logger);
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapSubscribeHandler();
+
+    var baristaOrderedTopic = new TopicOptions
+    {
+        PubsubName = "barista_pubsub",
+        Name = "baristaordered",
+        DeadLetterTopic = "baristaorderedDeadLetterTopic"
+    };
+
+    endpoints.MapPost(
+        "subscribe_BaristaOrdered",
+        async (BaristaOrdered @event, ISender sender) => await sender.Send(
+            new PlaceBaristaOrderCommand(@event.OrderId, @event.ItemLineId, @event.ItemType))
+    ).WithTopic(baristaOrderedTopic);
+});
 
 app.Run();

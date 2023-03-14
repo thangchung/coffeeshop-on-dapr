@@ -1,12 +1,10 @@
 // dotnet ef migrations add InitCounterDb -c MainDbContext -o Infrastructure/Data/Migrations
 
-using CounterService.Consumers;
 using CounterService.Domain;
 using CounterService.Features;
 using CounterService.Infrastructure.Data;
 using CounterService.Infrastructure.Gateways;
 using CounterService.Infrastructure.Hubs;
-using MassTransit;
 using N8T.Infrastructure;
 using N8T.Infrastructure.Controller;
 using N8T.Infrastructure.EfCore;
@@ -14,6 +12,9 @@ using N8T.Infrastructure.OTel;
 using Spectre.Console;
 using System.Net;
 using System.Text.Json;
+using CoffeeShop.Contracts;
+using Dapr;
+using MediatR;
 
 AnsiConsole.Write(new FigletText("Counter APIs").Color(Color.MediumPurple));
 
@@ -44,20 +45,6 @@ builder.Services
     .AddOTelTracing(builder.Configuration)
     .AddOTelMetrics(builder.Configuration);
 
-builder.Services.AddMassTransit(x =>
-{
-    x.AddConsumer<BaristaOrderUpdatedConsumer>(typeof(BaristaOrderUpdatedConsumerDefinition));
-    x.AddConsumer<KitchenOrderUpdatedConsumer>(typeof(KitchenOrderUpdatedConsumerDefinition));
-
-    x.SetKebabCaseEndpointNameFormatter();
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(builder.Configuration.GetValue<string>("RabbitMqUrl")!);
-        cfg.ConfigureEndpoints(context);
-    });
-});
-
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IItemGateway, ItemRestGateway>();
 builder.Services.AddDaprClient();
@@ -85,7 +72,51 @@ app.UseCloudEvents();
 
 //app.UseAuthorization();
 
-app.UseEndpoints(endpoints => endpoints.MapSubscribeHandler());
+app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapSubscribeHandler();
+        
+        var baristaOrderUpTopic = new TopicOptions
+        {
+            PubsubName = "orderup_pubsub",
+            Name = "orderup",
+            DeadLetterTopic = "orderupDeadLetterTopic"
+        };
+        
+        var kitchenOrderUpTopic = new TopicOptions
+        {
+            PubsubName = "orderup_pubsub",
+            Name = "orderup",
+            DeadLetterTopic = "orderupDeadLetterTopic"
+        };
+
+        endpoints.MapPost(
+            "subscribe_BaristaOrderUpdated",
+            async (BaristaOrderUpdated @event, ISender sender) => await sender.Send(
+                new BaristaOrderUpdatedCommand(
+                    @event.OrderId,
+                    @event.ItemLineId,
+                    @event.Name,
+                    @event.ItemType,
+                    @event.TimeIn,
+                    @event.MadeBy,
+                    @event.TimeUp))
+        ).WithTopic(baristaOrderUpTopic);
+        
+        endpoints.MapPost(
+            "subscribe_KitchenOrderUpdated",
+            async (KitchenOrderUpdated @event, ISender sender) => await sender.Send(
+                new KitchenOrderUpdatedCommand(
+                    @event.OrderId,
+                    @event.ItemLineId,
+                    @event.Name,
+                    @event.ItemType,
+                    @event.TimeIn,
+                    @event.MadeBy,
+                    @event.TimeUp))
+        ).WithTopic(kitchenOrderUpTopic);
+    }
+);
 
 _ = app.MapOrderInApiRoutes()
     .MapOrderFulfillmentApiRoutes();
