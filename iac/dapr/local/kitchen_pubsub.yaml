@@ -1,7 +1,7 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: kitchen_pubsub
+  name: kitchenpubsub
 spec:
   type: pubsub.redis
   version: v1

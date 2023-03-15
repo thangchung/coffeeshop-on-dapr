@@ -76,7 +76,7 @@ app.UseEndpoints(endpoints =>
         
         var orderUpTopic = new TopicOptions
         {
-            PubsubName = "orderup_pubsub",
+            PubsubName = "orderuppubsub",
             Name = "orderup",
             DeadLetterTopic = "orderupDeadLetterTopic"
         };

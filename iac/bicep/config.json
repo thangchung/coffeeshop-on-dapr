@@ -1,0 +1,113 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "1.10-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+    "_generator": {
+      "name": "bicep",
+      "version": "0.15.31.15270",
+      "templateHash": "9034553457058371867"
+    }
+  },
+  "parameters": {
+    "clusterName": {
+      "type": "string",
+      "defaultValue": "coffeeshop",
+      "metadata": {
+        "description": "Name of the AKS cluster. Defaults to a unique hash prefixed with \"coffeeshop-\""
+      }
+    },
+    "serviceBusAuthorizationRuleName": {
+      "type": "string",
+      "defaultValue": "[format('coffeeshop-{0}/Dapr', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Azure Service Bus authorization rule name"
+      }
+    }
+  },
+  "resources": {
+    "aksCluster": {
+      "existing": true,
+      "type": "Microsoft.ContainerService/managedClusters",
+      "apiVersion": "2022-05-02-preview",
+      "name": "[parameters('clusterName')]"
+    },
+    "serviceBusAuthorizationRule": {
+      "existing": true,
+      "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[parameters('serviceBusAuthorizationRuleName')]"
+    },
+    "secrets": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "secrets",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          },
+          "serviceBusConnectionString": {
+            "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/AuthorizationRules', split(parameters('serviceBusAuthorizationRuleName'), '/')[0], split(parameters('serviceBusAuthorizationRuleName'), '/')[1]), '2022-01-01-preview').primaryConnectionString]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "11061623631243192422"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "serviceBusConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Service Bus Authorization Rule connection string"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "serviceBusSecret": {
+              "import": "kubernetes",
+              "type": "core/Secret@v1",
+              "properties": {
+                "metadata": {
+                  "name": "servicebus"
+                },
+                "stringData": {
+                  "connectionString": "[parameters('serviceBusConnectionString')]"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -56,3 +56,25 @@ resource productServiceDeployment 'apps/Deployment@v1' = {
     }
   }
 }
+
+resource productService 'core/Service@v1' = {
+  metadata: {
+    name: 'productservice'
+    labels: {
+      app: 'productservice'
+    }
+  }
+  spec: {
+    selector: {
+      app: 'productservice'
+    }
+    ports: [
+      {
+        port: 5001
+        targetPort: 5001
+        protocol: 'TCP'
+      }
+    ]
+    type: 'ClusterIP'
+  }
+}

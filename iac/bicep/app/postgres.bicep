@@ -68,7 +68,7 @@ resource postgresService 'core/Service@v1' = {
     ports: [
       {
         port: 5432
-        targetPort: '5432'
+        targetPort: 5432
         protocol: 'TCP'
       }
     ]

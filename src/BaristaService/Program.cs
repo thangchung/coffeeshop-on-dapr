@@ -73,7 +73,7 @@ app.UseEndpoints(endpoints =>
 
     var baristaOrderedTopic = new TopicOptions
     {
-        PubsubName = "barista_pubsub",
+        PubsubName = "baristapubsub",
         Name = "baristaordered",
         DeadLetterTopic = "baristaorderedDeadLetterTopic"
     };

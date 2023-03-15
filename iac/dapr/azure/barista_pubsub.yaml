@@ -1,7 +1,7 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: barista_pubsub
+  name: baristapubsub
 spec:
   type: pubsub.azure.servicebus
   version: v1

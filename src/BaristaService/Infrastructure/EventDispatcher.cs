@@ -24,7 +24,7 @@ internal class EventDispatcher : INotificationHandler<EventWrapper>
         if (@eventWrapper.Event is BaristaOrderUp baristaOrderUpEvent)
         {
             await _daprClient.PublishEventAsync(
-                "orderup_pubsub",
+                "orderuppubsub",
                 "orderup",
                 baristaOrderUpEvent,
                 cancellationToken);

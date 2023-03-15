@@ -60,3 +60,25 @@ resource counterServiceDeployment 'apps/Deployment@v1' = {
     }
   }
 }
+
+resource counterService 'core/Service@v1' = {
+  metadata: {
+    name: 'counterservice'
+    labels: {
+      app: 'counterservice'
+    }
+  }
+  spec: {
+    selector: {
+      app: 'counterservice'
+    }
+    ports: [
+      {
+        port: 5002
+        targetPort: 5002
+        protocol: 'TCP'
+      }
+    ]
+    type: 'ClusterIP'
+  }
+}

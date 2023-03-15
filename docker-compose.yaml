@@ -13,7 +13,7 @@ services:
       - coffeeshop-network
 
   productservice:
-    image: ghcr.io/thangchung/coffeeshop-on-dapr/product-service:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/thangchung/coffeeshop-on-dapr}/product-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/ProductService/Dockerfile
@@ -41,7 +41,7 @@ services:
     network_mode: "service:productservice"
   
   counterservice:
-    image: ghcr.io/thangchung/coffeeshop-on-dapr/counter-service:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/thangchung/coffeeshop-on-dapr}/counter-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/CounterService/Dockerfile
@@ -75,7 +75,7 @@ services:
     network_mode: "service:counterservice"
 
   baristaservice:
-    image: ghcr.io/thangchung/coffeeshop-on-dapr/barista-service:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/thangchung/coffeeshop-on-dapr}/barista-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/BaristaService/Dockerfile
@@ -107,7 +107,7 @@ services:
     network_mode: "service:baristaservice"
 
   kitchenservice:
-    image: ghcr.io/thangchung/coffeeshop-on-dapr/kitchen-service:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/thangchung/coffeeshop-on-dapr}/kitchen-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/KitchenService/Dockerfile
@@ -138,7 +138,7 @@ services:
     network_mode: "service:kitchenservice"
 
   reverseproxy:
-    image: ghcr.io/thangchung/coffeeshop-on-dapr/reverse-proxy:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/thangchung/coffeeshop-on-dapr}/reverse-proxy:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./src/ReverseProxy/Dockerfile

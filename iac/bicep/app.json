@@ -1,0 +1,915 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "1.10-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+    "_generator": {
+      "name": "bicep",
+      "version": "0.15.31.15270",
+      "templateHash": "15760373548663046601"
+    }
+  },
+  "parameters": {
+    "registryName": {
+      "type": "string",
+      "defaultValue": "[format('coffeeshop{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Name of the container registry. Defaults to unique hashed ID prefixed with \"coffeeshop\""
+      }
+    },
+    "clusterName": {
+      "type": "string",
+      "defaultValue": "coffeeshop",
+      "metadata": {
+        "description": "Name of the AKS cluster. Defaults to a unique hash prefixed with \"coffeeshop-\""
+      }
+    }
+  },
+  "resources": {
+    "containerRegistry": {
+      "existing": true,
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2022-02-01-preview",
+      "name": "[parameters('registryName')]"
+    },
+    "aksCluster": {
+      "existing": true,
+      "type": "Microsoft.ContainerService/managedClusters",
+      "apiVersion": "2022-05-02-preview",
+      "name": "[parameters('clusterName')]"
+    },
+    "postgres": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "postgres",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "3439991867125738300"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "postgresDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "postgres",
+                  "labels": {
+                    "app": "postgres"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "postgres"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "postgres"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "postgres",
+                          "image": "postgres:14-alpine",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "POSTGRES_DB",
+                              "value": "postgres"
+                            },
+                            {
+                              "name": "POSTGRES_USER",
+                              "value": "postgres"
+                            },
+                            {
+                              "name": "POSTGRES_PASSWORD",
+                              "value": "P@ssw0rd"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "postgresService": {
+              "import": "kubernetes",
+              "type": "core/Service@v1",
+              "properties": {
+                "metadata": {
+                  "name": "postgres",
+                  "labels": {
+                    "app": "postgres"
+                  }
+                },
+                "spec": {
+                  "selector": {
+                    "app": "postgres"
+                  },
+                  "ports": [
+                    {
+                      "port": 5432,
+                      "targetPort": 5432,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "type": "ClusterIP"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reverseproxy": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "reverseproxy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerRegistry": {
+            "value": "[reference('containerRegistry').loginServer]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "4022299670412216638"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "containerRegistry": {
+              "type": "string",
+              "metadata": {
+                "description": "Address of the container registry where container resides"
+              }
+            },
+            "containerTag": {
+              "type": "string",
+              "defaultValue": "latest",
+              "metadata": {
+                "description": "Tag of container to use"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "reverseProxyDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "reverseproxy",
+                  "labels": {
+                    "app": "reverseproxy"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "reverseproxy"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "reverseproxy"
+                      },
+                      "annotations": {
+                        "dapr.io/enabled": "true",
+                        "dapr.io/app-id": "reverseproxy",
+                        "dapr.io/app-port": "8080"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "reverseproxy",
+                          "image": "[format('{0}/reverse-proxy:{1}', parameters('containerRegistry'), parameters('containerTag'))]",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "ASPNETCORE_ENVIRONMENT",
+                              "value": "Development"
+                            },
+                            {
+                              "name": "ReverseProxy__Clusters__productApiCluster__Destinations__destination1__Address",
+                              "value": "http://productservice:5001"
+                            },
+                            {
+                              "name": "ReverseProxy__Clusters__counterApiCluster__Destinations__destination1__Address",
+                              "value": "http://counterservice:5002"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "reverseProxyService": {
+              "import": "kubernetes",
+              "type": "core/Service@v1",
+              "properties": {
+                "metadata": {
+                  "name": "reverseproxy",
+                  "labels": {
+                    "app": "reverseproxy"
+                  }
+                },
+                "spec": {
+                  "selector": {
+                    "app": "reverseproxy"
+                  },
+                  "ports": [
+                    {
+                      "port": 80,
+                      "targetPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "type": "ClusterIP"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "productservice": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "productservice",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerRegistry": {
+            "value": "[reference('containerRegistry').loginServer]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "526672143273712100"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "containerRegistry": {
+              "type": "string",
+              "metadata": {
+                "description": "Address of the container registry where container resides"
+              }
+            },
+            "containerTag": {
+              "type": "string",
+              "defaultValue": "latest",
+              "metadata": {
+                "description": "Tag of container to use"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "productServiceDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "productservice",
+                  "labels": {
+                    "app": "productservice"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "productservice"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "productservice"
+                      },
+                      "annotations": {
+                        "dapr.io/enabled": "true",
+                        "dapr.io/app-id": "productservice",
+                        "dapr.io/app-port": "5001"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "productservice",
+                          "image": "[format('{0}/product-service:{1}', parameters('containerRegistry'), parameters('containerTag'))]",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "ASPNETCORE_ENVIRONMENT",
+                              "value": "Development"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "productService": {
+              "import": "kubernetes",
+              "type": "core/Service@v1",
+              "properties": {
+                "metadata": {
+                  "name": "productservice",
+                  "labels": {
+                    "app": "productservice"
+                  }
+                },
+                "spec": {
+                  "selector": {
+                    "app": "productservice"
+                  },
+                  "ports": [
+                    {
+                      "port": 5001,
+                      "targetPort": 5001,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "type": "ClusterIP"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "counterservice": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "counterservice",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerRegistry": {
+            "value": "[reference('containerRegistry').loginServer]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "7004033844372680742"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "containerRegistry": {
+              "type": "string",
+              "metadata": {
+                "description": "Address of the container registry where container resides"
+              }
+            },
+            "containerTag": {
+              "type": "string",
+              "defaultValue": "latest",
+              "metadata": {
+                "description": "Tag of container to use"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "counterServiceDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "counterservice",
+                  "labels": {
+                    "app": "counterservice"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "counterservice"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "counterservice"
+                      },
+                      "annotations": {
+                        "dapr.io/enabled": "true",
+                        "dapr.io/app-id": "counterservice",
+                        "dapr.io/app-port": "5002"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "counterservice",
+                          "image": "[format('{0}/counter-service:{1}', parameters('containerRegistry'), parameters('containerTag'))]",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "ASPNETCORE_ENVIRONMENT",
+                              "value": "Development"
+                            },
+                            {
+                              "name": "ConnectionStrings__counterdb",
+                              "value": "Server=postgres;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "counterService": {
+              "import": "kubernetes",
+              "type": "core/Service@v1",
+              "properties": {
+                "metadata": {
+                  "name": "counterservice",
+                  "labels": {
+                    "app": "counterservice"
+                  }
+                },
+                "spec": {
+                  "selector": {
+                    "app": "counterservice"
+                  },
+                  "ports": [
+                    {
+                      "port": 5002,
+                      "targetPort": 5002,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "type": "ClusterIP"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "baristaservice": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "baristaservice",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerRegistry": {
+            "value": "[reference('containerRegistry').loginServer]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "5046062073977848218"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "containerRegistry": {
+              "type": "string",
+              "metadata": {
+                "description": "Address of the container registry where container resides"
+              }
+            },
+            "containerTag": {
+              "type": "string",
+              "defaultValue": "latest",
+              "metadata": {
+                "description": "Tag of container to use"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "baristaServiceDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "baristaservice",
+                  "labels": {
+                    "app": "baristaservice"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "baristaservice"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "baristaservice"
+                      },
+                      "annotations": {
+                        "dapr.io/enabled": "true",
+                        "dapr.io/app-id": "baristaservice",
+                        "dapr.io/app-port": "5003"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "baristaservice",
+                          "image": "[format('{0}/barista-service:{1}', parameters('containerRegistry'), parameters('containerTag'))]",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "ASPNETCORE_ENVIRONMENT",
+                              "value": "Development"
+                            },
+                            {
+                              "name": "ConnectionStrings__baristadb",
+                              "value": "Server=postgres;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "kitchenservice": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "kitchenservice",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerRegistry": {
+            "value": "[reference('containerRegistry').loginServer]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "2308033416382995191"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "containerRegistry": {
+              "type": "string",
+              "metadata": {
+                "description": "Address of the container registry where container resides"
+              }
+            },
+            "containerTag": {
+              "type": "string",
+              "defaultValue": "latest",
+              "metadata": {
+                "description": "Tag of container to use"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "kitchenServiceDeployment": {
+              "import": "kubernetes",
+              "type": "apps/Deployment@v1",
+              "properties": {
+                "metadata": {
+                  "name": "kitchenservice",
+                  "labels": {
+                    "app": "kitchenservice"
+                  }
+                },
+                "spec": {
+                  "replicas": 1,
+                  "selector": {
+                    "matchLabels": {
+                      "app": "kitchenservice"
+                    }
+                  },
+                  "template": {
+                    "metadata": {
+                      "labels": {
+                        "app": "kitchenservice"
+                      },
+                      "annotations": {
+                        "dapr.io/enabled": "true",
+                        "dapr.io/app-id": "kitchenservice",
+                        "dapr.io/app-port": "5004"
+                      }
+                    },
+                    "spec": {
+                      "containers": [
+                        {
+                          "name": "kitchenservice",
+                          "image": "[format('{0}/kitchen-service:{1}', parameters('containerRegistry'), parameters('containerTag'))]",
+                          "imagePullPolicy": "Always",
+                          "env": [
+                            {
+                              "name": "ASPNETCORE_ENVIRONMENT",
+                              "value": "Development"
+                            },
+                            {
+                              "name": "ConnectionStrings__kitchendb",
+                              "value": "Server=postgres;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ingress": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "ingress",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "HTTPApplicationRoutingZoneName": {
+            "value": "[reference('aksCluster').addonProfiles.httpApplicationRouting.config.HTTPApplicationRoutingZoneName]"
+          },
+          "kubeConfig": {
+            "value": "[listClusterAdminCredential(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2022-05-02-preview').kubeconfigs[0].value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "1.10-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+            "_generator": {
+              "name": "bicep",
+              "version": "0.15.31.15270",
+              "templateHash": "7353240936672710092"
+            }
+          },
+          "parameters": {
+            "kubeConfig": {
+              "type": "securestring",
+              "metadata": {
+                "description": "The kube config for the target Kubernetes cluster."
+              }
+            },
+            "HTTPApplicationRoutingZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "DNS name of the HTTP Application Routing AddOn"
+              }
+            }
+          },
+          "imports": {
+            "kubernetes": {
+              "provider": "Kubernetes",
+              "version": "1.0.0",
+              "config": {
+                "kubeConfig": "[parameters('kubeConfig')]",
+                "namespace": "default"
+              }
+            }
+          },
+          "resources": {
+            "ingress": {
+              "import": "kubernetes",
+              "type": "networking.k8s.io/Ingress@v1",
+              "properties": {
+                "metadata": {
+                  "name": "reverseproxy",
+                  "annotations": {
+                    "kubernetes.io/ingress.class": "addon-http-application-routing"
+                  }
+                },
+                "spec": {
+                  "rules": [
+                    {
+                      "host": "[format('app.{0}', parameters('HTTPApplicationRoutingZoneName'))]",
+                      "http": {
+                        "paths": [
+                          {
+                            "path": "/",
+                            "pathType": "Prefix",
+                            "backend": {
+                              "service": {
+                                "name": "reverseproxy",
+                                "port": {
+                                  "number": 80
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

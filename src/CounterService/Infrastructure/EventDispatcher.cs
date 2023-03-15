@@ -26,14 +26,14 @@ public class EventDispatcher : INotificationHandler<EventWrapper>
         {
             case BaristaOrderIn baristaOrderInEvent:
                 await _daprClient.PublishEventAsync(
-                    "barista_pubsub",
+                    "baristapubsub",
                     nameof(BaristaOrdered).ToLowerInvariant(),
                     baristaOrderInEvent,
                     cancellationToken);
                 break;
             case KitchenOrderIn kitchenOrderInEvent:
                 await _daprClient.PublishEventAsync(
-                    "kitchen_pubsub",
+                    "kitchenpubsub",
                     nameof(KitchenOrdered).ToLowerInvariant(),
                     kitchenOrderInEvent,
                     cancellationToken);

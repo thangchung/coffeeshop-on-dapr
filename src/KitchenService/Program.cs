@@ -72,7 +72,7 @@ app.UseEndpoints(endpoints =>
 
     var kitchenOrderedTopic = new TopicOptions
     {
-        PubsubName = "kitchen_pubsub",
+        PubsubName = "kitchenpubsub",
         Name = "kitchenordered",
         DeadLetterTopic = "kitchenorderedDeadLetterTopic"
     };

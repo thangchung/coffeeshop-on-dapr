@@ -79,7 +79,7 @@ resource reverseProxyService 'core/Service@v1' = {
     ports: [
       {
         port: 80
-        targetPort: '8080'
+        targetPort: 8080
         protocol: 'TCP'
       }
     ]
