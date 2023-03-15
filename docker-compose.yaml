@@ -31,10 +31,10 @@ services:
      "-app-id", "productservice",
      "-app-port", "5001",
      "-placement-host-address", "placement:50006",
-     "-config", "/components/config.yaml",
-     "-components-path", "/components"]
+     "-config", "/iac/dapr/local/config.yaml",
+     "-components-path", "/iac/dapr/local"]
     volumes:
-      - "./components/:/components"
+      - "./iac/dapr/local/:/iac/dapr/local"
     depends_on:
       - productservice
     restart: always
@@ -65,10 +65,10 @@ services:
      "-app-id", "counterservice",
      "-app-port", "5002",
      "-placement-host-address", "placement:50006",
-     "-config", "/components/config.yaml",
-     "-components-path", "/components"]
+     "-config", "/iac/dapr/local/config.yaml",
+     "-components-path", "/iac/dapr/local"]
     volumes:
-      - "./components/:/components"
+      - "./iac/dapr/local/:/iac/dapr/local"
     depends_on:
       - counterservice
     restart: always
@@ -97,10 +97,10 @@ services:
      "-app-id", "baristaservice",
      "-app-port", "5003",
      "-placement-host-address", "placement:50006",
-     "-config", "/components/config.yaml",
-     "-components-path", "/components"]
+     "-config", "/iac/dapr/local/config.yaml",
+     "-components-path", "/iac/dapr/local"]
     volumes:
-      - "./components/:/components"
+      - "./iac/dapr/local/:/iac/dapr/local"
     depends_on:
       - baristaservice
     restart: always
@@ -128,10 +128,10 @@ services:
      "-app-id", "kitchenservice",
      "-app-port", "5004",
      "-placement-host-address", "placement:50006",
-     "-config", "/components/config.yaml",
-     "-components-path", "/components"]
+     "-config", "/iac/dapr/local/config.yaml",
+     "-components-path", "/iac/dapr/local"]
     volumes:
-      - "./components/:/components"
+      - "./iac/dapr/local/:/iac/dapr/local"
     depends_on:
       - kitchenservice
     restart: always
@@ -163,10 +163,10 @@ services:
      "-app-id", "reverseproxy",
      "-app-port", "8080",
      "-placement-host-address", "placement:50006",
-     "-config", "/components/config.yaml",
-     "-components-path", "/components"]
+     "-config", "/iac/dapr/local/config.yaml",
+     "-components-path", "/iac/dapr/local"]
     volumes:
-      - "./components/:/components"
+      - "./iac/dapr/local/:/iac/dapr/local"
     depends_on:
       - reverseproxy
     restart: always

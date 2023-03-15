@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: azure-servicebus-queue-scaledobject-kitchen
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kitchenservice
+  minReplicaCount: 1
+  triggers:
+  - type: azure-servicebus
+    metadata:
+      namespace: coffeeshop
+      topicName: kitchenordered
+      subscriptionName: kitchenservice
+      messageCount: "5"
+      connectionFromEnv: SERVICEBUS_CONNECTIONSTRING

@@ -18,7 +18,7 @@ AnsiConsole.Write(new FigletText("Barista APIs").Color(Color.MediumPurple));
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost
-    .AddOTelLogs()
+    // .AddOTelLogs()
     .ConfigureKestrel(webBuilder =>
     {
         webBuilder.Listen(IPAddress.Any, builder.Configuration.GetValue("RestPort", 5003)); // REST
@@ -36,9 +36,9 @@ builder.Services
         svc => svc.AddRepository(typeof(Repository<>)))
     .AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services
-    .AddOTelTracing(builder.Configuration)
-    .AddOTelMetrics(builder.Configuration);
+// builder.Services
+//     .AddOTelTracing(builder.Configuration)
+//     .AddOTelMetrics(builder.Configuration);
 
 builder.Services.AddDaprClient();
 builder.Services.AddSingleton(new JsonSerializerOptions()

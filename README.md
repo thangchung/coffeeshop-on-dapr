@@ -52,18 +52,6 @@ Finally, you can play around using [client.http](client.http) to explore the app
 
 TODO
 
-# Troubleshooting
+# Credits
 
-## Couldn't run `sebp/elk:latest` on Docker (Windows 11 - WSL2 with Docker for Desktop integrated)
-
-> error: elasticsearch_1  | max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
-
-Jump into wsl2, then run command below
-
-```
-$ sudo sysctl -w vm.max_map_count=262144
-```
-
-Now, we can run `docker-compose up` again.
-
-# References
+- https://github.com/thangchung/PetSpotR

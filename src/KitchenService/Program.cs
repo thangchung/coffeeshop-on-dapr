@@ -5,7 +5,6 @@ using KitchenService.Infrastructure.Data;
 using N8T.Infrastructure;
 using N8T.Infrastructure.Controller;
 using N8T.Infrastructure.EfCore;
-using N8T.Infrastructure.OTel;
 using Spectre.Console;
 using System.Net;
 using System.Text.Json;
@@ -18,7 +17,7 @@ AnsiConsole.Write(new FigletText("Kitchen APIs").Color(Color.MediumPurple));
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost
-    .AddOTelLogs()
+    // .AddOTelLogs()
     .ConfigureKestrel(webBuilder =>
     {
         webBuilder.Listen(IPAddress.Any, builder.Configuration.GetValue("RestPort", 5004)); // REST
@@ -36,9 +35,9 @@ builder.Services
         svc => svc.AddRepository(typeof(Repository<>)))
     .AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services
-    .AddOTelTracing(builder.Configuration)
-    .AddOTelMetrics(builder.Configuration);
+// builder.Services
+//     .AddOTelTracing(builder.Configuration)
+//     .AddOTelMetrics(builder.Configuration);
 
 builder.Services.AddDaprClient();
 builder.Services.AddSingleton(new JsonSerializerOptions()
