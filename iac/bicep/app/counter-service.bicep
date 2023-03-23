@@ -53,6 +53,15 @@ resource counterServiceDeployment 'apps/Deployment@v1' = {
                 name: 'ConnectionStrings__counterdb'
                 value: 'Server=postgres;Port=5432;Database=postgres;User Id=postgres;Password=P@ssw0rd'
               }
+              {
+                name: 'SERVICEBUS_CONNECTIONSTRING'
+                valueFrom: {
+                  secretKeyRef: {
+                    name: 'servicebus'
+                    key: 'connectionString'
+                  }
+                }
+              }
             ]
           }
         ]
