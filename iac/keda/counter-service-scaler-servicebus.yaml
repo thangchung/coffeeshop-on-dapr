@@ -12,7 +12,7 @@ spec:
   triggers:
   - type: azure-servicebus
     metadata:
-      namespace: coffeeshop
+      namespace: coffeeshop-6btxmgewt7xsu
       topicName: orderup
       subscriptionName: counterservice
       messageCount: "5"

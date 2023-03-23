@@ -92,35 +92,16 @@ Finally, you can play around using [client.http](client.http) to explore the app
    cd coffeeshop-on-dapr
    ```
 
-1. Create resource group
-    ```bash
-    az group create -l eastus -n azure_oss_rg
-    ```
-
 1. Deploy the infrastructure
    ```bash
-   az deployment group create --resource-group azure_oss_rg --template-file ./iac/bicep/infra.json
+   az deployment sub create --location eastus --template-file ./iac/bicep/main.bicep
    ```
 
-1. Deploy the configuration
-   ```bash
-   az deployment group create --resource-group azure_oss_rg --template-file ./iac/bicep/config.json
-   ```
-
-1. Get AKS credentials
-   ```bash
-   az aks get-credentials --resource-group azure_oss_rg --name coffeeshop
-   ```
-
-1. Install Helm Charts
-   ```bash
-   helm repo add dapr https://dapr.github.io/helm-charts/
-   helm repo add kedacore https://kedacore.github.io/charts
-   helm repo update
-   helm upgrade dapr dapr/dapr --install --version=1.10 --namespace dapr-system --create-namespace --wait
-   # Only works with 2.0.0 => https://stackoverflow.com/questions/72617893/error-while-creating-scaled-objects-in-aks-with-keda
-   # Work-around solution for higher Keda 2.0.0, but I am not try => https://github.com/kedacore/keda/issues/2178
-   helm upgrade keda kedacore/keda --install --version=2.0.0 --namespace keda --create-namespace --wait
+1. Install Dapr  extension
+      
+   #### Enable Dapr extension [here](https://docs.dapr.io/developing-applications/integrations/azure/azure-kubernetes-service-extension/)
+   ```bash   
+   az k8s-extension create --cluster-type managedClusters --cluster-name coffeeshop --resource-group azure_oss_rg --name dapr --extension-type Microsoft.Dapr
    ```
 
 1. Log into Azure Container Registry
@@ -149,6 +130,11 @@ Finally, you can play around using [client.http](client.http) to explore the app
    docker push <registry_server_uri>/reverse-proxy:latest
    ```
 
+1. Get AKS credentials
+   ```bash
+   az aks get-credentials --resource-group azure_oss_rg --name coffeeshop
+   ```
+
 1. Create dapr component on AKS
    ```bash
    kubectl apply -f iac/dapr/azure/orderup_pubsub.yaml
@@ -158,7 +144,7 @@ Finally, you can play around using [client.http](client.http) to explore the app
 
 1. Deploy the application
    ```bash
-   az deployment group create --resource-group azure_oss_rg --template-file ./iac/bicep/app.json
+   az deployment group create --resource-group azure_oss_rg --template-file ./iac/bicep/app.bicep
    ```
 
 1. Get your frontend URL
@@ -171,7 +157,7 @@ Finally, you can play around using [client.http](client.http) to explore the app
    |---|---|---|---|---|---|
    |reverseproxy|<none>|app.5cde744b1d1242ffbc32.eastus.aksapp.io|20.241.232.155|80|13m|
 
-1. Navigate to [client.http](client.http), and change `@host` to what you can see on previous command, for example: `app.5cde744b1d1242ffbc32.eastus.aksapp.io`, then play with REST APIs there. Enjoy!
+8. Navigate to [client.http](client.http), and change `@host` to what you can see on previous command, for example: `app.5cde744b1d1242ffbc32.eastus.aksapp.io`, then play with REST APIs there. Enjoy!
 
 ## Clean up
 
