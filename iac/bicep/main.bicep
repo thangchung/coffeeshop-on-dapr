@@ -2,7 +2,7 @@ targetScope = 'subscription'
 
 @minLength(3)
 @maxLength(11)
-param resourceGroupName string = 'azure_oss_rg'
+param resourceGroupName string = 'az_oss_rg'
 
 param location string = deployment().location
 

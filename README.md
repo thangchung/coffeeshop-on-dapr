@@ -49,7 +49,7 @@ The .NET coffeeshop application runs on Dapr
 
 ## Architecture
 
-TODO
+![](assets/coffeeshop_high_level_architecture.png)
 
 ## Pre-requisites
 
@@ -92,14 +92,19 @@ Finally, you can play around using [client.http](client.http) to explore the app
    cd coffeeshop-on-dapr
    ```
 
+1. Install KEDA extension
+   #### Enable KEDA extension [here](https://learn.microsoft.com/en-us/azure/aks/keda-deploy-add-on-arm)
+   ```bash
+   az feature register --namespace "Microsoft.ContainerService" --name "AKS-KedaPreview"
+   ```
+
 1. Deploy the infrastructure
    ```bash
    az deployment sub create --location eastus --template-file ./iac/bicep/main.bicep
    ```
 
-1. Install Dapr  extension
-      
-   #### Enable Dapr extension [here](https://docs.dapr.io/developing-applications/integrations/azure/azure-kubernetes-service-extension/)
+1. Install Dapr extension
+   #### Enable Dapr extension [here](https://docs.dapr.io/developing-applications/integrations/azure/azure-kubernetes-service-extension)
    ```bash   
    az k8s-extension create --cluster-type managedClusters --cluster-name coffeeshop --resource-group azure_oss_rg --name dapr --extension-type Microsoft.Dapr
    ```
@@ -132,8 +137,12 @@ Finally, you can play around using [client.http](client.http) to explore the app
 
 1. Get AKS credentials
    ```bash
-   az aks get-credentials --resource-group azure_oss_rg --name coffeeshop
+   az aks get-credentials --resource-group az_oss_rg --name coffeeshop
    ```
+
+   Make sure when you go to Azure Portal, you should see `keda` and `dapr` components as the picture below
+
+   ![](assets/aks_coffeeshop.png)
 
 1. Create dapr component on AKS
    ```bash
@@ -144,7 +153,7 @@ Finally, you can play around using [client.http](client.http) to explore the app
 
 1. Deploy the application
    ```bash
-   az deployment group create --resource-group azure_oss_rg --template-file ./iac/bicep/app.bicep
+   az deployment group create --resource-group az_oss_rg --template-file ./iac/bicep/app.bicep
    ```
 
 1. Get your frontend URL
@@ -162,7 +171,7 @@ Finally, you can play around using [client.http](client.http) to explore the app
 ## Clean up
 
    ```bash
-   az group delete -n azure_oss_rg
+   az group delete -n az_oss_rg
    ```
 
 # Credits
